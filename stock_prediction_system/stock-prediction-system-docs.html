@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能股价预测系统 - 技术文档</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #0a0e1a;
+            color: #e0e6f0;
+            line-height: 1.7;
+        }
+        .container { max-width: 960px; margin: 0 auto; padding: 40px 24px; }
+        
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 60px 0 40px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            margin-bottom: 40px;
+        }
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+        .header .subtitle {
+            color: #8899b4;
+            font-size: 15px;
+        }
+        .header .badge {
+            display: inline-block;
+            margin-top: 16px;
+            padding: 4px 16px;
+            background: rgba(96,165,250,0.12);
+            border: 1px solid rgba(96,165,250,0.25);
+            border-radius: 20px;
+            color: #60a5fa;
+            font-size: 13px;
+        }
+
+        /* TOC */
+        .toc {
+            background: #141b2d;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 12px;
+            padding: 24px 28px;
+            margin-bottom: 40px;
+        }
+        .toc h2 {
+            font-size: 16px;
+            color: #8899b4;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+        .toc ol {
+            padding-left: 20px;
+        }
+        .toc li {
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+        .toc a {
+            color: #60a5fa;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .toc a:hover { color: #93bbfc; }
+
+        /* Sections */
+        section {
+            margin-bottom: 48px;
+        }
+        section h2 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #f0f4ff;
+            margin-bottom: 20px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid rgba(96,165,250,0.3);
+        }
+        section h3 {
+            font-size: 17px;
+            font-weight: 600;
+            color: #c8d4e6;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+        section p {
+            margin-bottom: 14px;
+            color: #b0bed6;
+        }
+        section ul, section ol {
+            padding-left: 20px;
+            margin-bottom: 14px;
+            color: #b0bed6;
+        }
+        section li {
+            margin-bottom: 6px;
+        }
+
+        /* Code */
+        code {
+            background: #1e293b;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 13px;
+            color: #93bbfc;
+        }
+        pre {
+            background: #141b2d;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 10px;
+            padding: 16px 20px;
+            overflow-x: auto;
+            margin-bottom: 16px;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+            color: #a8c8fa;
+        }
+        .code-block-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 16px;
+            background: #1a2332;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-bottom: none;
+            border-radius: 10px 10px 0 0;
+            font-size: 12px;
+            color: #8899b4;
+        }
+        .code-block-header + pre {
+            border-radius: 0 0 10px 10px;
+            margin-top: 0;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        th {
+            background: #1a2332;
+            color: #c8d4e6;
+            font-weight: 600;
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 2px solid rgba(96,165,250,0.2);
+        }
+        td {
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            color: #b0bed6;
+        }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+
+        /* Cards */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
+            margin: 16px 0;
+        }
+        .feature-card {
+            background: #141b2d;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .feature-card h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #60a5fa;
+            margin-bottom: 8px;
+        }
+        .feature-card p {
+            font-size: 13px;
+            color: #8899b4;
+            margin: 0;
+        }
+
+        /* Alert / Callout */
+        .callout {
+            background: rgba(96,165,250,0.08);
+            border-left: 4px solid #60a5fa;
+            border-radius: 0 8px 8px 0;
+            padding: 14px 18px;
+            margin-bottom: 16px;
+        }
+        .callout.warn {
+            background: rgba(251,191,36,0.08);
+            border-left-color: #fbbf24;
+        }
+        .callout.warn p { color: #fde68a; }
+        .callout p { margin: 0; font-size: 14px; color: #b0d4ff; }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid rgba(255,255,255,0.06);
+            padding-top: 24px;
+            margin-top: 48px;
+            text-align: center;
+            color: #5a6b82;
+            font-size: 13px;
+        }
+
+        @media (max-width: 640px) {
+            .container { padding: 20px 16px; }
+            .header h1 { font-size: 24px; }
+            .feature-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- Header -->
+    <div class="header">
+        <h1>智能股价预测系统</h1>
+        <p class="subtitle">基于 AKShare 的多维度股票分析与多周期价格预测系统</p>
+        <span class="badge">技术文档 v1.0</span>
+    </div>
+
+    <!-- TOC -->
+    <div class="toc">
+        <h2>目录</h2>
+        <ol>
+            <li><a href="#overview">项目概述</a></li>
+            <li><a href="#architecture">系统架构</a></li>
+            <li><a href="#modules">模块说明</a></li>
+            <li><a href="#indicators">技术指标</a></li>
+            <li><a href="#prediction">预测模型</a></li>
+            <li><a href="#api">API 接口</a></li>
+            <li><a href="#config">配置说明</a></li>
+            <li><a href="#deploy">部署方式</a></li>
+            <li><a href="#faq">常见问题</a></li>
+        </ol>
+    </div>
+
+    <!-- 1. Overview -->
+    <section id="overview">
+        <h2>1. 项目概述</h2>
+        <p>智能股价预测系统是一个集数据采集、技术指标计算、多周期预测与可视化展示于一体的综合股票分析工具。系统完全基于免费数据源（AKShare），不依赖任何付费 API。</p>
+        
+        <h3>核心功能</h3>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h4>多维度数据采集</h4>
+                <p>整合技术面（OHLCV、资金流向）、基本面（财务指标、估值）、情绪面（新闻舆情情感分析）三类数据</p>
+            </div>
+            <div class="feature-card">
+                <h4>全面技术指标</h4>
+                <p>纯 pandas/numpy 实现 MA、MACD、RSI、KDJ、BOLL、成交量均量线等 6 大类指标</p>
+            </div>
+            <div class="feature-card">
+                <h4>多周期预测</h4>
+                <p>短期（1 周）、中期（1 个月）、长期（3 个月）、超长期（6 个月）四个周期综合预测</p>
+            </div>
+            <div class="feature-card">
+                <h4>动态情景分析</h4>
+                <p>基于实时技术指标状态（RSI、MACD、BOLL 位置等）自动生成情景事件，非硬编码模板</p>
+            </div>
+            <div class="feature-card">
+                <h4>交互式 Web 界面</h4>
+                <p>Flask + ECharts 提供美观的 K 线图展示、预测面板和新闻舆情可视化</p>
+            </div>
+            <div class="feature-card">
+                <h4>智能搜索</h4>
+                <p>支持股票名称/代码实时模糊搜索，自动识别市场（SH/SZ），一键触达</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2. Architecture -->
+    <section id="architecture">
+        <h2>2. 系统架构</h2>
+        <p>系统采用模块化分层架构，主要分为数据采集层、指标计算层、预测模型层和 Web 展示层。</p>
+        
+        <h3>目录结构</h3>
+        <pre><code>stock_prediction_system/
+├── config.py                  # 全局配置（数据源、指标参数、预测参数）
+├── main.py                    # 双模式入口（Web / CLI）
+├── requirements.txt            # 完整依赖清单
+├── requirements-docker.txt     # Docker 精简依赖
+├── Dockerfile                  # Docker 镜像构建文件
+├── docker-compose.yml          # Docker Compose 编排配置
+├── .dockerignore               # Docker 构建忽略规则
+│
+├── data/                       # 数据采集层
+│   ├── collector.py            #   DataCollector 协调器
+│   ├── technical.py            #   技术面数据采集（K线、资金流向）
+│   ├── fundamental.py           #   基本面数据采集（财务指标、行业对比）
+│   └── sentiment.py            #   情绪面数据采集（新闻舆情、情感分析）
+│
+├── indicators/                 # 指标计算层
+│   └── calculator.py           #   技术指标计算（MA/MACD/RSI/KDJ/BOLL）
+│
+├── models/                     # 预测模型层
+│   └── predictor.py            #   多周期预测 + 置信度评估 + 情景分析
+│
+├── reports/                    # 报告生成
+│   └── generator.py            #   文本/JSON 格式报告输出
+│
+└── web/                        # Web 展示层
+    ├── app.py                  #   Flask API 服务器
+    └── templates/
+        └── index.html          #   单页 Web 应用（ECharts 可视化）</code></pre>
+    </section>
+
+    <!-- 3. Modules -->
+    <section id="modules">
+        <h2>3. 模块说明</h2>
+
+        <h3>3.1 数据采集层</h3>
+        <p>所有数据通过 <a href="https://akshare.akfamily.xyz/" style="color:#60a5fa;">AKShare</a> 免费开源库获取，无需付费 API Key。</p>
+
+        <table>
+            <tr><th>模块</th><th>数据源</th><th>获取内容</th></tr>
+            <tr><td><code>technical.py</code></td><td><code>ak.stock_zh_a_hist</code></td><td>日/周/月 K 线（OHLCV + 成交量额 + 涨跌幅 + 换手率）</td></tr>
+            <tr><td><code>technical.py</code></td><td><code>ak.stock_individual_fund_flow</code></td><td>个股资金流向（主力/超大单/大单/中单/小单）</td></tr>
+            <tr><td><code>fundamental.py</code></td><td><code>ak.stock_financial_analysis_indicator</code></td><td>86+ 财务分析指标（ROE、毛利率、净利率等）</td></tr>
+            <tr><td><code>fundamental.py</code></td><td><code>ak.stock_profit_sheet_by_yearly_em</code></td><td>年度利润表</td></tr>
+            <tr><td><code>fundamental.py</code></td><td><code>ak.stock_balance_sheet_by_report_em</code></td><td>资产负债表</td></tr>
+            <tr><td><code>fundamental.py</code></td><td><code>ak.stock_board_industry_spot_em</code></td><td>行业板块行情对比</td></tr>
+            <tr><td><code>sentiment.py</code></td><td><code>ak.stock_news_em</code></td><td>个股相关新闻（标题/来源/时间/链接）</td></tr>
+            <tr><td><code>sentiment.py</code></td><td>SnowNLP</td><td>中文情感分析（积极/中性/消极分类）</td></tr>
+        </table>
+
+        <div class="callout">
+            <p><strong>注意：</strong>系统默认使用 <code>ak.stock_news_em</code> 获取个股新闻，若失败则自动降级为新浪财经滚动新闻或财新市场要闻，确保始终有舆情数据可展示。</p>
+        </div>
+
+        <h3>3.2 指标计算层</h3>
+        <p>纯 pandas/numpy 实现，<strong>无 TA-Lib 依赖</strong>。支持的指标包括：</p>
+        <ul>
+            <li><strong>MA</strong>（移动平均线）：5/10/20/60 日四周期</li>
+            <li><strong>MACD</strong>（指数平滑异同平均）：12/26/9 标准参数，含 DIF、DEA、MACD 柱</li>
+            <li><strong>RSI</strong>（相对强弱指数）：14 日周期，含超买（>80）/超卖（&lt;20）判断</li>
+            <li><strong>KDJ</strong>（随机指标）：9/3/3 标准参数，含 J 值超买（>100）/超卖（&lt;0）</li>
+            <li><strong>BOLL</strong>（布林带）：20 日周期，2 倍标准差，含带宽指标</li>
+            <li><strong>VOL_MA</strong>（成交量均量线）：5/20 日两周期</li>
+        </ul>
+
+        <h3>3.3 预测模型层</h3>
+        <p>基于加权集成方法的多周期预测模型：</p>
+        <table>
+            <tr><th>周期</th><th>时间跨度</th><th>交易日数</th><th>基准权重</th></tr>
+            <tr><td>短期</td><td>1 周</td><td>5 天</td><td>0.30</td></tr>
+            <tr><td>中期</td><td>1 个月</td><td>20 天</td><td>0.30</td></tr>
+            <tr><td>长期</td><td>3 个月</td><td>60 天</td><td>0.25</td></tr>
+            <tr><td>超长期</td><td>6 个月</td><td>120 天</td><td>0.15</td></tr>
+        </table>
+
+        <p>每个周期的预测综合以下维度：</p>
+        <ul>
+            <li><strong>技术面（30%）</strong>：均线系统趋势 + MACD 金叉/死叉 + RSI 强度 + KDJ 信号 + BOLL 位置</li>
+            <li><strong>基本面（25%）</strong>：ROE 质量 + 营收增长率</li>
+            <li><strong>情绪面（15%）</strong>：新闻情感分析平均得分</li>
+            <li><strong>多周期趋势一致性（20%）</strong>：不同时间维度信号的相互验证</li>
+            <li><strong>波动率因子（10%）</strong>：历史波动率对价格区间的影响</li>
+        </ul>
+
+        <div class="callout warn">
+            <p><strong>风险提示：</strong>本系统所有预测均为基于历史数据的统计推断，不构成任何投资建议。股市有风险，投资需谨慎。</p>
+        </div>
+    </section>
+
+    <!-- 4. Technical Indicators Detail -->
+    <section id="indicators">
+        <h2>4. 技术指标详解</h2>
+        
+        <h3>4.1 移动平均线 (MA)</h3>
+        <p>计算指定周期（5/10/20/60日）的收盘价简单移动平均，用于判断趋势方向和支撑/阻力位。当短周期均线（MA5）上穿长周期均线（MA20）时为"金叉"看涨信号，反之为"死叉"看跌信号。</p>
+
+        <h3>4.2 MACD</h3>
+        <p>DIF = EMA(close, 12) - EMA(close, 26)；DEA = EMA(DIF, 9)；MACD = 2 × (DIF - DEA)。DIF 上穿 DEA 为金叉看涨，下穿为死叉看跌。MACD 柱为正值时多头动能增强，负值时空头动能增强。</p>
+
+        <h3>4.3 RSI</h3>
+        <p>RSI = 100 - 100 / (1 + RS)，其中 RS = 平均上涨幅度 / 平均下跌幅度（14 日周期）。RSI > 80 为超买区（回调风险），RSI &lt; 20 为超卖区（反弹机会），RSI > 60 偏强，RSI &lt; 40 偏弱。</p>
+
+        <h3>4.4 KDJ</h3>
+        <p>RSV = (close - 最低价) / (最高价 - 最低价) × 100；K = EMA(RSV)；D = EMA(K)；J = 3K - 2D。K 上穿 D 为金叉看涨，下穿为死叉看跌。J > 100 为超买，J &lt; 0 为超卖。</p>
+
+        <h3>4.5 布林带 (BOLL)</h3>
+        <p>中轨 = 20 日均线，上轨 = 中轨 + 2σ，下轨 = 中轨 - 2σ。价格突破上轨为超买信号，跌破下轨为超卖信号。带宽（BOLL_WIDTH）反映波动率变化。</p>
+
+        <h3>4.6 信号综合评分</h3>
+        <p>系统将各指标信号加权汇总为综合评分（0~100）：</p>
+        <ul>
+            <li>评分 &gt; 60：看涨（up）</li>
+            <li>评分 &lt; 40：看跌（down）</li>
+            <li>评分 40~60：横盘（sideways）</li>
+        </ul>
+    </section>
+
+    <!-- 5. Prediction Model -->
+    <section id="prediction">
+        <h2>5. 预测模型详情</h2>
+
+        <h3>5.1 置信度评估</h3>
+        <p>每个周期的置信度（10~90 分）基于以下因素计算：</p>
+        <ul>
+            <li><strong>技术信号强度</strong>：信号越强，置信度越高</li>
+            <li><strong>数据完整性</strong>：基本面数据和情绪数据越完整，加分越多</li>
+            <li><strong>时间衰减</strong>：预测周期越长，置信度越低（ 1 - days/250 × 0.3）</li>
+        </ul>
+        <p>置信度分级：≥70 为"较高"，≥50 为"中等"，&lt;50 为"较低"。</p>
+
+        <h3>5.2 动态情景分析</h3>
+        <p>情景分析并非硬编码模板，而是基于当前实时技术指标状态自动生成：</p>
+        <ul>
+            <li><strong>RSI 状态</strong>：超买区/偏强/中性/偏弱/超卖，对应生成回升或回落情景</li>
+            <li><strong>MACD 状态</strong>：金叉/死叉持续或反转情景</li>
+            <li><strong>BOLL 位置</strong>：价格在轨道中的位置，对应反弹或压力情景</li>
+            <li><strong>均线排列</strong>：多头/空头/交叉排列，对应趋势延续或逆转情景</li>
+            <li><strong>KDJ 的 J 值</strong>：超买/超卖警示情景</li>
+        </ul>
+        <p>每个周期生成 5 个情景事件（3 个同向 + 2 个反向），并附带概率评估（较高/中等）。</p>
+
+        <h3>5.3 价格区间预测</h3>
+        <p>预测价格区间 = 预期价格 × (1 ± 价格区间百分比)，其中：</p>
+        <p>价格区间百分比 = 波动率 × max(2, 天数/20) × 0.5</p>
+        <p>波动率基于历史日收益率的标准差年化计算。</p>
+    </section>
+
+    <!-- 6. API -->
+    <section id="api">
+        <h2>6. API 接口说明</h2>
+        <p>系统提供以下 RESTful API：</p>
+
+        <table>
+            <tr><th>接口</th><th>方法</th><th>说明</th></tr>
+            <tr><td><code>/api/stock/analyze</code></td><td>POST</td><td>完整分析股票（技术面 + 基本面 + 情绪面 + 多周期预测）</td></tr>
+            <tr><td><code>/api/stock/search</code></td><td>POST</td><td>模糊搜索股票（支持名称/代码，自动识别市场）</td></tr>
+            <tr><td><code>/api/stock/kline</code></td><td>POST</td><td>获取 K 线数据（支持日/周/月，可指定天数）</td></tr>
+            <tr><td><code>/api/stock/fundamental</code></td><td>POST</td><td>获取基本面数据</td></tr>
+            <tr><td><code>/api/stock/indicators</code></td><td>POST</td><td>获取技术指标数据（最近 30 条）</td></tr>
+        </table>
+
+        <h3>请求示例</h3>
+        <div class="code-block-header"><span>分析股票</span><span>POST /api/stock/analyze</span></div>
+        <pre><code>{
+    "code": "000001",
+    "name": "平安银行",
+    "market": "SZ"
+}</code></pre>
+
+        <div class="code-block-header"><span>搜索股票</span><span>POST /api/stock/search</span></div>
+        <pre><code>{
+    "keyword": "平安"
+}</code></pre>
+    </section>
+
+    <!-- 7. Config -->
+    <section id="config">
+        <h2>7. 配置说明</h2>
+        <p>所有配置集中在 <code>config.py</code> 文件中，主要参数包括：</p>
+
+        <table>
+            <tr><th>配置项</th><th>参数</th><th>默认值</th><th>说明</th></tr>
+            <tr><td><code>DATA_SOURCE</code></td><td>request_delay</td><td>0.5</td><td>API 请求间隔（秒）</td></tr>
+            <tr><td><code>DATA_SOURCE</code></td><td>max_retries</td><td>3</td><td>最大重试次数</td></tr>
+            <tr><td><code>STOCK_DEFAULT</code></td><td>code/market/name</td><td>000001/SZ/平安银行</td><td>默认股票</td></tr>
+            <tr><td><code>TECHNICAL_PARAMS</code></td><td>ma_periods</td><td>[5,10,20,60]</td><td>MA 周期列表</td></tr>
+            <tr><td><code>TECHNICAL_PARAMS</code></td><td>macd_fast/slow/signal</td><td>12/26/9</td><td>MACD 标准参数</td></tr>
+            <tr><td><code>TECHNICAL_PARAMS</code></td><td>rsi_period</td><td>14</td><td>RSI 周期</td></tr>
+            <tr><td><code>TECHNICAL_PARAMS</code></td><td>kdj_k/kdj_d</td><td>9/3</td><td>KDJ 参数</td></tr>
+            <tr><td><code>TECHNICAL_PARAMS</code></td><td>boll_period/boll_std</td><td>20/2</td><td>布林带参数</td></tr>
+            <tr><td><code>PREDICTION_PARAMS</code></td><td>各周期天数</td><td>5/20/60/120</td><td>四周期交易日数</td></tr>
+            <tr><td><code>CONFIDENCE_WEIGHTS</code></td><td>各维度权重</td><td>0.30/0.25/0.15/...</td><td>置信度评估权重</td></tr>
+            <tr><td><code>SENTIMENT_PARAMS</code></td><td>max_news_items</td><td>50</td><td>最大新闻数量</td></tr>
+            <tr><td><code>WEB_CONFIG</code></td><td>host/port</td><td>0.0.0.0:8765</td><td>Web 服务地址（Docker 默认全绑定）</td></tr>
+        </table>
+    </section>
+
+    <!-- 8. Deploy -->
+    <section id="deploy">
+        <h2>8. 部署方式</h2>
+
+        <h3>8.1 Docker 部署（推荐）</h3>
+        <p>系统支持一键 Docker 部署，确保 Docker Desktop 已安装并运行。</p>
+
+        <div class="code-block-header"><span>构建并启动</span></div>
+        <pre><code># 进入项目目录
+cd stock_prediction_system
+
+# 构建并启动容器（首次构建约 15-20 分钟，取决于网络）
+docker compose up -d
+
+# 查看启动日志
+docker compose logs -f
+
+# 访问 Web 界面
+open http://127.0.0.1:8765</code></pre>
+
+        <div class="code-block-header"><span>管理容器</span></div>
+        <pre><code># 重启容器
+docker compose restart
+
+# 停止容器
+docker compose down
+
+# 查看容器状态
+docker ps --filter name=stock-prediction
+
+# 查看资源占用
+docker stats stock-prediction</code></pre>
+
+        <div class="code-block-header"><span>重新构建</span></div>
+        <pre><code># 在修改代码后需要重新构建
+docker compose build --no-cache stock-prediction
+docker compose up -d</code></pre>
+
+        <div class="callout">
+            <p><strong>Docker 注意事项：</strong></p>
+            <p>• 默认端口为 8765，可通过修改 <code>docker-compose.yml</code> 中的 <code>ports</code> 映射更改</p>
+            <p>• 容器设置了健康检查（间隔 30s，超时 10s，起始等待 60s）</p>
+            <p>• <code>restart: unless-stopped</code> 确保宿主机重启后自动运行</p>
+            <p>• 时区默认北京（Asia/Shanghai）</p>
+        </div>
+
+        <h3>8.2 本地直接运行</h3>
+
+        <div class="code-block-header"><span>安装依赖</span></div>
+        <pre><code># 推荐使用 Python 3.11+
+pip install akshare flask flask-cors pandas numpy snownlp lxml beautifulsoup4 requests --break-system-packages</code></pre>
+
+        <div class="code-block-header"><span>启动 Web 服务</span></div>
+        <pre><code># 方式一：使用主入口
+python main.py
+
+# 方式二：直接启动 Flask
+python web/app.py
+
+# 方式三：指定端口
+python main.py --port 8080</code></pre>
+
+        <div class="code-block-header"><span>CLI 模式（无需浏览器）</span></div>
+        <pre><code># 分析指定股票
+python main.py --cli 600519 SH --name 贵州茅台</code></pre>
+
+        <div class="callout warn">
+            <p><strong>注意：</strong>首次运行需要下载 AKShare 数据缓存和 SnowNLP 词典，可能需要 30-60 秒。后续请求将使用缓存。</p>
+        </div>
+    </section>
+
+    <!-- 9. FAQ -->
+    <section id="faq">
+        <h2>9. 常见问题</h2>
+
+        <h3>Q: 为什么新闻舆情大部分显示"中性"？</h3>
+        <p>系统使用 SnowNLP 对新闻标题进行情感分析，默认阈值划分：评分 > 0.55 为积极，< 0.45 为消极，其余为中性。大部分财经新闻标题本身偏客观报道，因此中性占比较高。这是正常现象，综合得分仍准确反映了整体情感偏向。</p>
+
+        <h3>Q: 如何更改默认股票？</h3>
+        <p>修改 <code>config.py</code> 中的 <code>STOCK_DEFAULT</code> 配置，或在 Web 界面输入框中直接搜索。</p>
+
+        <h3>Q: 数据来源是否稳定？</h3>
+        <p>AKShare 是免费的 Python 金融数据接口库，持续维护更新。如果某个 API 失效，系统会自动切换到备用数据源。如遇到版本兼容问题，可更新 AKShare：<code>pip install akshare --upgrade</code></p>
+
+        <h3>Q: 为什么 K 线图上涨为红色，下跌为绿色？</h3>
+        <p>这是遵循 A 股市场惯例：红色代表上涨，绿色代表下跌。页面中的"看涨"标签也使用红色显示，保持一致。</p>
+
+        <h3>Q: 如何查看所有 API 端点？</h3>
+        <p>查看 <code>web/app.py</code> 中以 <code>@app.route</code> 装饰的函数，每个函数对应一个 API 端点，均有详细注释。</p>
+
+        <h3>Q: Docker 构建太慢怎么办？</h3>
+        <p>首次构建需要下载 python:3.11 基础镜像（约 900MB）和所有 Python 依赖（约 500MB）。建议使用稳定的网络环境。后续构建会利用 Docker 缓存层，速度将大幅提升。</p>
+
+        <h3>Q: 容器启动后如何访问？</h3>
+        <p>Docker 启动后，在浏览器打开 <code>http://127.0.0.1:8765</code> 即可访问 Web 界面。如果使用远程服务器，请替换为服务器 IP 地址。</p>
+    </section>
+
+    <footer>
+        <p>智能股价预测系统 &copy; 2026 &mdash; 数据来源: AKShare &mdash; 本系统不构成投资建议</p>
+    </footer>
+</div>
+</body>
+</html>
