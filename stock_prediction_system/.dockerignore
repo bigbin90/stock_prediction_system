@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.egg
+.eggs/
+dist/
+build/
+
+# 版本控制
+.git/
+.gitignore
+.gitattributes
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 文档和备份
+*.html
+stock-prediction-system-docs.html
+
+# 容器相关（避免循环）
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# 不使用的依赖文件
+requirements.txt
+
+# 本地临时文件
+*.log
+*.tmp
