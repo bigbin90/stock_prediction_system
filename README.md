@@ -2,6 +2,13 @@
 
 基于 AKShare 的多维度股票分析与多周期价格预测系统。集数据采集、技术指标计算、多周期预测与可视化展示于一体，完全基于免费数据源，无需任何付费 API。
 
+## 效果展示
+<img width="2672" height="1212" alt="image" src="https://github.com/user-attachments/assets/4ebe67fc-407d-406a-96f8-1e393e6c9140" />
+<img width="2714" height="1064" alt="image" src="https://github.com/user-attachments/assets/0d8f23e8-d5a9-41a5-8ed2-df5c0fd5bc04" />
+<img width="2702" height="1000" alt="image" src="https://github.com/user-attachments/assets/1663affc-a682-4bad-b1e8-8c1256ee3a26" />
+<img width="2742" height="1262" alt="image" src="https://github.com/user-attachments/assets/d10316ab-0009-4b3f-8659-2bf6aa75d080" />
+
+
 ## 核心功能
 
 - **多维度数据采集**：整合技术面（OHLCV、资金流向）、基本面（财务指标、估值）、情绪面（新闻舆情情感分析）三类数据
