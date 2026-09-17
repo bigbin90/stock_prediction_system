@@ -471,6 +471,62 @@
         }
         .news-item .news-meta span { margin-right: 12px; }
         
+        /* Financial Report */
+        .financial-container {
+            background: #141b2d;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .financial-container h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #e0e6f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .financial-source {
+            font-size: 12px;
+            color: #5a6b82;
+            font-weight: 400;
+        }
+        .financial-summary {
+            background: linear-gradient(135deg, rgba(59,130,246,0.06), rgba(99,102,241,0.06));
+            border: 1px solid rgba(96,165,250,0.15);
+            border-radius: 10px;
+            padding: 16px 18px;
+            margin-bottom: 20px;
+            color: #c9d4e5;
+            font-size: 13px;
+            line-height: 1.8;
+        }
+        .financial-summary .summary-label {
+            color: #60a5fa;
+            font-weight: 600;
+        }
+        .financial-charts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 16px;
+        }
+        .financial-chart-box {
+            background: #0f1626;
+            border-radius: 10px;
+            padding: 14px;
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+        .financial-chart-title {
+            font-size: 13px;
+            color: #8899b4;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        #revenueProfitChart, #marginChart { width: 100%; height: 280px; }
+        #shareholderChart, #employeeChart { width: 100%; height: 280px; }
+        
         /* Responsive */
         @media (max-width: 768px) {
             .search-bar { flex-direction: column; }
@@ -516,6 +572,42 @@
                 <div id="klineChart"></div>
             </div>
             
+            <!-- Financial Report -->
+            <div class="financial-container" id="financialContainer">
+                <h3>财务报告分析 <span class="financial-source">数据来源：巨潮资讯网(cninfo.com.cn)</span></h3>
+                <div class="financial-summary" id="financialSummary">
+                    <p style="color:#5a6b82;">正在加载财务报告数据...</p>
+                </div>
+                <div class="financial-charts">
+                    <div class="financial-chart-box">
+                        <div class="financial-chart-title">营业收入 &amp; 净利润（亿元）</div>
+                        <div id="revenueProfitChart"></div>
+                    </div>
+                    <div class="financial-chart-box">
+                        <div class="financial-chart-title">毛利率 &amp; 净利率（%）</div>
+                        <div id="marginChart"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Shareholder & Employee -->
+            <div class="financial-container" id="holderEmpContainer">
+                <h3>股东人数 &amp; 员工数量 <span class="financial-source">数据来源：东方财富数据中心(eastmoney.com)</span></h3>
+                <div class="financial-summary" id="holderEmpSummary">
+                    <p style="color:#5a6b82;">正在加载股东/员工数据...</p>
+                </div>
+                <div class="financial-charts">
+                    <div class="financial-chart-box">
+                        <div class="financial-chart-title">股东户数（户，近3年）</div>
+                        <div id="shareholderChart"></div>
+                    </div>
+                    <div class="financial-chart-box">
+                        <div class="financial-chart-title">员工数量（人，近3年）</div>
+                        <div id="employeeChart"></div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Predictions -->
             <div class="prediction-grid" id="predictionGrid"></div>
             
@@ -541,6 +633,10 @@
     
     <script>
         let klineChart = null;
+        let revenueProfitChart = null;
+        let marginChart = null;
+        let shareholderChart = null;
+        let employeeChart = null;
         
         document.addEventListener('DOMContentLoaded', function() {
             // Enter key to trigger analysis
@@ -721,6 +817,12 @@
                 
                 // 6. 加载K线图
                 loadKlineChart(code, market);
+                
+                // 7. 加载财务报告分析
+                loadFinancialReport(code);
+                
+                // 8. 加载股东人数 & 员工数量
+                loadShareholderEmployee(code);
                 
                 document.getElementById('results').style.display = 'block';
                 
@@ -1130,6 +1232,273 @@
                 
             } catch (e) {
                 console.error('K线图加载失败:', e);
+            }
+        }
+        
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+        
+        async function loadFinancialReport(code) {
+            const summaryEl = document.getElementById('financialSummary');
+            summaryEl.innerHTML = '<p style="color:#5a6b82;">正在加载财务报告数据...</p>';
+            try {
+                const resp = await fetch('/api/stock/financial_report', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code, years: 3 })
+                });
+                const result = await resp.json();
+                
+                if (!result.success || !result.data || !result.data.years || result.data.years.length === 0) {
+                    summaryEl.innerHTML = '<p style="color:#8899b4;">暂无财务报告数据（可能为近期上市或数据源暂缺）</p>';
+                    document.getElementById('revenueProfitChart').innerHTML = '';
+                    document.getElementById('marginChart').innerHTML = '';
+                    return;
+                }
+                
+                const d = result.data;
+                summaryEl.innerHTML = '<span class="summary-label">📋 摘要解读：</span>' + escapeHtml(d.summary || '暂无解读');
+                renderFinancialCharts(d);
+            } catch (e) {
+                console.error('财务报告加载失败:', e);
+                summaryEl.innerHTML = '<p style="color:#8899b4;">财务报告数据加载失败</p>';
+            }
+        }
+        
+        function renderFinancialCharts(d) {
+            const years = d.years || [];
+            const revenue = d.revenue || [];
+            const netProfit = d.net_profit || [];
+            const grossMargin = d.gross_margin || [];
+            const netMargin = d.net_margin || [];
+            
+            // 图表1：营业收入 & 净利润（亿元）
+            if (!revenueProfitChart) {
+                revenueProfitChart = echarts.init(document.getElementById('revenueProfitChart'));
+            }
+            revenueProfitChart.setOption({
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: '#1a2332',
+                    borderColor: '#2d3a4e',
+                    textStyle: { color: '#e0e6f0' }
+                },
+                legend: { data: ['营业收入', '净利润'], textStyle: { color: '#8899b4' }, top: 0 },
+                grid: { left: '6%', right: '6%', top: '20%', bottom: '8%', containLabel: true },
+                xAxis: {
+                    type: 'category', data: years,
+                    axisLine: { lineStyle: { color: '#2d3a4e' } },
+                    axisLabel: { color: '#8899b4' }
+                },
+                yAxis: {
+                    type: 'value', name: '亿元',
+                    nameTextStyle: { color: '#8899b4' },
+                    splitLine: { lineStyle: { color: '#1e293b', type: 'dashed' } },
+                    axisLabel: { color: '#8899b4' }
+                },
+                series: [
+                    { name: '营业收入', type: 'bar', data: revenue, barMaxWidth: 40, itemStyle: { color: '#3b82f6', borderRadius: [4, 4, 0, 0] } },
+                    { name: '净利润', type: 'bar', data: netProfit, barMaxWidth: 40, itemStyle: { color: '#10b981', borderRadius: [4, 4, 0, 0] } }
+                ]
+            });
+            
+            // 图表2：毛利率 & 净利率（%）
+            if (!marginChart) {
+                marginChart = echarts.init(document.getElementById('marginChart'));
+            }
+            const hasGross = (grossMargin || []).some(v => v !== null && v !== undefined);
+            const hasNet = (netMargin || []).some(v => v !== null && v !== undefined);
+            
+            if (!hasGross && !hasNet) {
+                marginChart.clear();
+                marginChart.setOption({
+                    backgroundColor: 'transparent',
+                    graphic: {
+                        type: 'text', left: 'center', top: 'middle',
+                        style: { text: '无毛利率/净利率数据', fill: '#5a6b82', fontSize: 13 }
+                    }
+                });
+                return;
+            }
+            
+            const legendData = [];
+            const series = [];
+            if (hasGross) {
+                legendData.push('毛利率');
+                series.push({ name: '毛利率', type: 'line', data: grossMargin, smooth: true, symbol: 'circle', symbolSize: 6, lineStyle: { color: '#fbbf24', width: 2 }, itemStyle: { color: '#fbbf24' } });
+            }
+            if (hasNet) {
+                legendData.push('净利率');
+                series.push({ name: '净利率', type: 'line', data: netMargin, smooth: true, symbol: 'circle', symbolSize: 6, lineStyle: { color: '#a78bfa', width: 2 }, itemStyle: { color: '#a78bfa' } });
+            }
+            marginChart.setOption({
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: '#1a2332',
+                    borderColor: '#2d3a4e',
+                    textStyle: { color: '#e0e6f0' }
+                },
+                legend: { data: legendData, textStyle: { color: '#8899b4' }, top: 0 },
+                grid: { left: '6%', right: '6%', top: '20%', bottom: '8%', containLabel: true },
+                xAxis: {
+                    type: 'category', data: years,
+                    boundaryGap: false,
+                    axisLine: { lineStyle: { color: '#2d3a4e' } },
+                    axisLabel: { color: '#8899b4' }
+                },
+                yAxis: {
+                    type: 'value', name: '%',
+                    nameTextStyle: { color: '#8899b4' },
+                    splitLine: { lineStyle: { color: '#1e293b', type: 'dashed' } },
+                    axisLabel: { color: '#8899b4' }
+                },
+                series: series
+            });
+            
+            // 统一 resize 处理
+            if (!window._financialResizeBound) {
+                window._financialResizeBound = true;
+                window.addEventListener('resize', function() {
+                    revenueProfitChart && revenueProfitChart.resize();
+                    marginChart && marginChart.resize();
+                });
+            }
+        }
+        
+        async function loadShareholderEmployee(code) {
+            const summaryEl = document.getElementById('holderEmpSummary');
+            summaryEl.innerHTML = '<p style="color:#5a6b82;">正在加载股东/员工数据...</p>';
+            try {
+                const resp = await fetch('/api/stock/shareholder_employee', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code, years: 3 })
+                });
+                const result = await resp.json();
+                
+                const rd = result.data || {};
+                const hasData = (rd.shareholder_count && rd.shareholder_count.length > 0) || (rd.employee_count && rd.employee_count.length > 0);
+                
+                if (!result.success || !hasData) {
+                    summaryEl.innerHTML = '<p style="color:#8899b4;">暂无股东/员工数据（数据源暂缺）</p>';
+                    document.getElementById('shareholderChart').innerHTML = '';
+                    document.getElementById('employeeChart').innerHTML = '';
+                    return;
+                }
+                
+                summaryEl.innerHTML = '<span class="summary-label">📋 摘要解读：</span>' + escapeHtml(rd.summary || '暂无解读');
+                renderShareholderEmployeeCharts(rd);
+            } catch (e) {
+                console.error('股东/员工数据加载失败:', e);
+                summaryEl.innerHTML = '<p style="color:#8899b4;">股东/员工数据加载失败</p>';
+            }
+        }
+        
+        function renderShareholderEmployeeCharts(d) {
+            const sDates = d.shareholder_dates || [];
+            const sCount = d.shareholder_count || [];
+            const eYears = (d.employee_years || []).map(function(y) { return String(y); });
+            const eCount = d.employee_count || [];
+            
+            // 股东户数折线图
+            if (!shareholderChart) {
+                shareholderChart = echarts.init(document.getElementById('shareholderChart'));
+            }
+            if (sCount.length === 0) {
+                shareholderChart.clear();
+                shareholderChart.setOption({
+                    backgroundColor: 'transparent',
+                    graphic: { type: 'text', left: 'center', top: 'middle', style: { text: '无股东户数数据', fill: '#5a6b82', fontSize: 13 } }
+                });
+            } else {
+                shareholderChart.setOption({
+                    backgroundColor: 'transparent',
+                    tooltip: {
+                        trigger: 'axis',
+                        backgroundColor: '#1a2332',
+                        borderColor: '#2d3a4e',
+                        textStyle: { color: '#e0e6f0' },
+                        formatter: function(params) {
+                            const p = params[0];
+                            return p.name + '<br/>' + p.marker + '股东户数：' + Number(p.value).toLocaleString() + ' 户';
+                        }
+                    },
+                    grid: { left: '6%', right: '6%', top: '12%', bottom: '12%', containLabel: true },
+                    xAxis: {
+                        type: 'category', data: sDates, boundaryGap: false,
+                        axisLine: { lineStyle: { color: '#2d3a4e' } },
+                        axisLabel: { color: '#8899b4', rotate: 30, fontSize: 10 }
+                    },
+                    yAxis: {
+                        type: 'value', name: '户数',
+                        nameTextStyle: { color: '#8899b4' },
+                        splitLine: { lineStyle: { color: '#1e293b', type: 'dashed' } },
+                        axisLabel: { color: '#8899b4' }
+                    },
+                    series: [{
+                        name: '股东户数', type: 'line', data: sCount, smooth: true,
+                        symbol: 'circle', symbolSize: 5,
+                        areaStyle: { color: 'rgba(96,165,250,0.12)' },
+                        lineStyle: { color: '#60a5fa', width: 2 },
+                        itemStyle: { color: '#60a5fa' }
+                    }]
+                });
+            }
+            
+            // 员工数量柱状图
+            if (!employeeChart) {
+                employeeChart = echarts.init(document.getElementById('employeeChart'));
+            }
+            if (eCount.length === 0) {
+                employeeChart.clear();
+                employeeChart.setOption({
+                    backgroundColor: 'transparent',
+                    graphic: { type: 'text', left: 'center', top: 'middle', style: { text: '无员工数量数据', fill: '#5a6b82', fontSize: 13 } }
+                });
+            } else {
+                employeeChart.setOption({
+                    backgroundColor: 'transparent',
+                    tooltip: {
+                        trigger: 'axis',
+                        backgroundColor: '#1a2332',
+                        borderColor: '#2d3a4e',
+                        textStyle: { color: '#e0e6f0' },
+                        formatter: function(params) {
+                            const p = params[0];
+                            return p.name + ' 年<br/>' + p.marker + '员工数量：' + Number(p.value).toLocaleString() + ' 人';
+                        }
+                    },
+                    grid: { left: '6%', right: '6%', top: '12%', bottom: '8%', containLabel: true },
+                    xAxis: {
+                        type: 'category', data: eYears,
+                        axisLine: { lineStyle: { color: '#2d3a4e' } },
+                        axisLabel: { color: '#8899b4' }
+                    },
+                    yAxis: {
+                        type: 'value', name: '人数',
+                        nameTextStyle: { color: '#8899b4' },
+                        splitLine: { lineStyle: { color: '#1e293b', type: 'dashed' } },
+                        axisLabel: { color: '#8899b4' }
+                    },
+                    series: [{
+                        name: '员工数量', type: 'bar', data: eCount, barMaxWidth: 46,
+                        itemStyle: { borderRadius: [4, 4, 0, 0], color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: '#10b981' }, { offset: 1, color: '#0e7490' }] } },
+                        label: { show: true, position: 'top', color: '#8899b4' }
+                    }]
+                });
+            }
+            
+            if (!window._holderEmpResizeBound) {
+                window._holderEmpResizeBound = true;
+                window.addEventListener('resize', function() {
+                    shareholderChart && shareholderChart.resize();
+                    employeeChart && employeeChart.resize();
+                });
             }
         }
     </script>

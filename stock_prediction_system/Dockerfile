@@ -2,7 +2,9 @@
 # 智能股价预测系统 - Docker 镜像
 # 基于 python:3.11（完整版，自带编译工具），避免 slim 镜像的 apt 依赖
 # ==============================================================
-FROM python:3.11
+# 基础镜像显式走 daocloud 加速器：本地 Docker 引擎的 registry-mirrors
+# 对 docker.io 基镜像的匿名 HEAD 会返回 401/403 导致解析失败
+FROM docker.m.daocloud.io/library/python:3.11
 
 LABEL maintainer="stock-prediction-system"
 LABEL description="智能股价预测系统 - 基于AKShare的多维度股票分析与预测"
@@ -22,8 +24,13 @@ WORKDIR /app
 # 先复制依赖文件（利用 Docker 缓存层）
 COPY requirements-docker.txt .
 
-# 安装 Python 依赖
-RUN pip install --no-cache-dir -r requirements-docker.txt --break-system-packages
+# 安装 Python 依赖（使用阿里云镜像加速，避免下载超时）
+RUN pip install --no-cache-dir \
+    -i https://mirrors.aliyun.com/pypi/simple/ \
+    --trusted-host mirrors.aliyun.com \
+    --default-timeout=300 \
+    -r requirements-docker.txt \
+    --break-system-packages
 
 # 复制项目代码
 COPY . .

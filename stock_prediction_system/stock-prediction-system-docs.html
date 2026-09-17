@@ -228,7 +228,7 @@
     <div class="header">
         <h1>智能股价预测系统</h1>
         <p class="subtitle">基于 AKShare 的多维度股票分析与多周期价格预测系统</p>
-        <span class="badge">技术文档 v1.0</span>
+        <span class="badge">技术文档 v1.2</span>
     </div>
 
     <!-- TOC -->
@@ -278,6 +278,14 @@
                 <h4>智能搜索</h4>
                 <p>支持股票名称/代码实时模糊搜索，自动识别市场（SH/SZ），一键触达</p>
             </div>
+            <div class="feature-card">
+                <h4>财务报告分析</h4>
+                <p>近 3 年营业收入、净利润、毛利率对比解读与图表（巨潮资讯网）</p>
+            </div>
+            <div class="feature-card">
+                <h4>股东人数 &amp; 员工数量</h4>
+                <p>近 3 年股东户数、员工数量变化趋势（东方财富数据中心）</p>
+            </div>
         </div>
     </section>
 
@@ -300,6 +308,7 @@
 │   ├── collector.py            #   DataCollector 协调器
 │   ├── technical.py            #   技术面数据采集（K线、资金流向）
 │   ├── fundamental.py           #   基本面数据采集（财务指标、行业对比）
+│   ├── financial_report.py     #   财报分析（巨潮）+ 股东/员工（东方财富数据中心）
 │   └── sentiment.py            #   情绪面数据采集（新闻舆情、情感分析）
 │
 ├── indicators/                 # 指标计算层
@@ -326,18 +335,20 @@
 
         <table>
             <tr><th>模块</th><th>数据源</th><th>获取内容</th></tr>
-            <tr><td><code>technical.py</code></td><td><code>ak.stock_zh_a_hist</code></td><td>日/周/月 K 线（OHLCV + 成交量额 + 涨跌幅 + 换手率）</td></tr>
-            <tr><td><code>technical.py</code></td><td><code>ak.stock_individual_fund_flow</code></td><td>个股资金流向（主力/超大单/大单/中单/小单）</td></tr>
+            <tr><td><code>technical.py</code></td><td><code>ak.stock_zh_a_daily</code></td><td>日/周/月 K 线（OHLCV + 成交量额 + 涨跌幅 + 换手率），新浪数据源</td></tr>
+            <tr><td><code>technical.py</code></td><td><code>ak.stock_individual_fund_flow</code></td><td>个股资金流向（主力/超大单/大单/中单/小单），东方财富</td></tr>
             <tr><td><code>fundamental.py</code></td><td><code>ak.stock_financial_analysis_indicator</code></td><td>86+ 财务分析指标（ROE、毛利率、净利率等）</td></tr>
-            <tr><td><code>fundamental.py</code></td><td><code>ak.stock_profit_sheet_by_yearly_em</code></td><td>年度利润表</td></tr>
-            <tr><td><code>fundamental.py</code></td><td><code>ak.stock_balance_sheet_by_report_em</code></td><td>资产负债表</td></tr>
-            <tr><td><code>fundamental.py</code></td><td><code>ak.stock_board_industry_spot_em</code></td><td>行业板块行情对比</td></tr>
+            <tr><td><code>fundamental.py</code></td><td><code>ak.stock_financial_benefit_ths</code></td><td>利润表，同花顺数据源</td></tr>
+            <tr><td><code>fundamental.py</code></td><td><code>ak.stock_financial_abstract</code></td><td>财务摘要数据（资产负债表、现金流指标）</td></tr>
+            <tr><td><code>fundamental.py</code></td><td><code>ak.stock_board_industry_summary_ths</code></td><td>行业板块行情对比，同花顺数据源</td></tr>
             <tr><td><code>sentiment.py</code></td><td><code>ak.stock_news_em</code></td><td>个股相关新闻（标题/来源/时间/链接）</td></tr>
             <tr><td><code>sentiment.py</code></td><td>SnowNLP</td><td>中文情感分析（积极/中性/消极分类）</td></tr>
+            <tr><td><code>financial_report.py</code></td><td>巨潮资讯网 <code>cninfo.com.cn</code></td><td>近 3 年财报摘要（营收、净利润、毛利率），requests 直连</td></tr>
+            <tr><td><code>financial_report.py</code></td><td>东方财富数据中心 <code>datacenter.eastmoney.com</code></td><td>近 3 年股东户数、员工数量变化，requests 直连</td></tr>
         </table>
 
         <div class="callout">
-            <p><strong>注意：</strong>系统默认使用 <code>ak.stock_news_em</code> 获取个股新闻，若失败则自动降级为新浪财经滚动新闻或财新市场要闻，确保始终有舆情数据可展示。</p>
+            <p><strong>注意：</strong>由于 Docker 容器环境中东方财富 API 存在 IP 封禁问题，K 线数据已切换为新浪 <code>stock_zh_a_daily</code> 数据源，财务数据已切换为同花顺 <code>stock_financial_benefit_ths</code> / <code>stock_financial_abstract</code> 数据源。新闻舆情默认使用 <code>ak.stock_news_em</code>，若失败则自动降级为新浪财经滚动新闻或财新市场要闻，确保始终有舆情数据可展示。</p>
         </div>
 
         <h3>3.2 指标计算层</h3>
@@ -369,6 +380,14 @@
             <li><strong>多周期趋势一致性（20%）</strong>：不同时间维度信号的相互验证</li>
             <li><strong>波动率因子（10%）</strong>：历史波动率对价格区间的影响</li>
         </ul>
+
+        <h3>3.4 财务报告与股东/员工分析</h3>
+        <p>系统新增两项财报派生分析能力，数据均通过 <code>requests</code> 直连公开接口，不依赖 AKShare：</p>
+        <ul>
+            <li><strong>财务报告分析</strong>：从巨潮资讯网获取近 3 年营业收入、净利润、毛利率等关键指标，生成摘要解读，并以双图表（营收/净利润、毛利率/净利率）可视化。</li>
+            <li><strong>股东人数 &amp; 员工数量</strong>：从东方财富数据中心获取近 3 年股东户数（季度）与员工数量（年度）变化，以折线图/柱状图展示，并附同比（YoY）与摘要解读。</li>
+        </ul>
+        <p>两者均已完成沪深证券代码适配（如 <code>600519.SH</code> / <code>000001.SZ</code>）。</p>
 
         <div class="callout warn">
             <p><strong>风险提示：</strong>本系统所有预测均为基于历史数据的统计推断，不构成任何投资建议。股市有风险，投资需谨慎。</p>
@@ -445,6 +464,8 @@
             <tr><td><code>/api/stock/kline</code></td><td>POST</td><td>获取 K 线数据（支持日/周/月，可指定天数）</td></tr>
             <tr><td><code>/api/stock/fundamental</code></td><td>POST</td><td>获取基本面数据</td></tr>
             <tr><td><code>/api/stock/indicators</code></td><td>POST</td><td>获取技术指标数据（最近 30 条）</td></tr>
+            <tr><td><code>/api/stock/financial_report</code></td><td>POST</td><td>获取近 3 年财务报告分析（营收/净利润/毛利率，巨潮资讯网）</td></tr>
+            <tr><td><code>/api/stock/shareholder_employee</code></td><td>POST</td><td>获取近 3 年股东户数、员工数量变化（东方财富数据中心）</td></tr>
         </table>
 
         <h3>请求示例</h3>
@@ -479,7 +500,7 @@
             <tr><td><code>PREDICTION_PARAMS</code></td><td>各周期天数</td><td>5/20/60/120</td><td>四周期交易日数</td></tr>
             <tr><td><code>CONFIDENCE_WEIGHTS</code></td><td>各维度权重</td><td>0.30/0.25/0.15/...</td><td>置信度评估权重</td></tr>
             <tr><td><code>SENTIMENT_PARAMS</code></td><td>max_news_items</td><td>50</td><td>最大新闻数量</td></tr>
-            <tr><td><code>WEB_CONFIG</code></td><td>host/port</td><td>0.0.0.0:8765</td><td>Web 服务地址（Docker 默认全绑定）</td></tr>
+            <tr><td><code>WEB_CONFIG</code></td><td>host/port</td><td>127.0.0.1:8765</td><td>Web 服务地址（Docker 中由 <code>FLASK_HOST</code> 覆盖为 0.0.0.0）</td></tr>
         </table>
     </section>
 
@@ -501,7 +522,7 @@ docker compose up -d
 docker compose logs -f
 
 # 访问 Web 界面
-open http://127.0.0.1:8765</code></pre>
+open http://127.0.0.1:8766</code></pre>
 
         <div class="code-block-header"><span>管理容器</span></div>
         <pre><code># 重启容器
@@ -518,15 +539,15 @@ docker stats stock-prediction</code></pre>
 
         <div class="code-block-header"><span>重新构建</span></div>
         <pre><code># 在修改代码后需要重新构建
-docker compose build --no-cache stock-prediction
-docker compose up -d</code></pre>
+docker compose down && docker compose build && docker compose up -d</code></pre>
 
         <div class="callout">
             <p><strong>Docker 注意事项：</strong></p>
-            <p>• 默认端口为 8765，可通过修改 <code>docker-compose.yml</code> 中的 <code>ports</code> 映射更改</p>
+            <p>• 默认端口映射为 <code>8766:8765</code>（外部 8766 → 容器内 8765），可通过修改 <code>docker-compose.yml</code> 中的 <code>ports</code> 映射更改</p>
             <p>• 容器设置了健康检查（间隔 30s，超时 10s，起始等待 60s）</p>
             <p>• <code>restart: unless-stopped</code> 确保宿主机重启后自动运行</p>
             <p>• 时区默认北京（Asia/Shanghai）</p>
+            <p>• 代码热更新：<code>docker-compose.yml</code> 默认挂载了 <code>data/</code>、<code>models/</code>、<code>indicators/</code>、<code>config.py</code>、<code>web/app.py</code>，修改后重启容器即可生效</p>
         </div>
 
         <h3>8.2 本地直接运行</h3>
@@ -574,10 +595,13 @@ python main.py --cli 600519 SH --name 贵州茅台</code></pre>
         <p>查看 <code>web/app.py</code> 中以 <code>@app.route</code> 装饰的函数，每个函数对应一个 API 端点，均有详细注释。</p>
 
         <h3>Q: Docker 构建太慢怎么办？</h3>
-        <p>首次构建需要下载 python:3.11 基础镜像（约 900MB）和所有 Python 依赖（约 500MB）。建议使用稳定的网络环境。后续构建会利用 Docker 缓存层，速度将大幅提升。</p>
+        <p>首次构建需要下载 python:3.11 基础镜像（约 900MB，Dockerfile 已通过 daocloud 镜像加速器拉取）和所有 Python 依赖（约 500MB）。后续构建会利用 Docker 缓存层，速度将大幅提升。</p>
 
         <h3>Q: 容器启动后如何访问？</h3>
-        <p>Docker 启动后，在浏览器打开 <code>http://127.0.0.1:8765</code> 即可访问 Web 界面。如果使用远程服务器，请替换为服务器 IP 地址。</p>
+        <p>Docker 启动后，在浏览器打开 <code>http://127.0.0.1:8766</code> 即可访问 Web 界面。如果使用远程服务器，请替换为服务器 IP 地址。默认端口映射为 8766（外部）→ 8765（容器内）。</p>
+
+        <h3>Q: 为什么 Docker 容器中 K 线数据接口换了？</h3>
+        <p>由于东方财富 API 在 Docker 容器环境中存在 IP 封禁问题，系统已将 K 线数据源切换为新浪 <code>stock_zh_a_daily</code>，财务数据切换为同花顺 <code>stock_financial_benefit_ths</code>。功能完全兼容，额外计算了涨跌幅、涨跌额和振幅等衍生指标。</p>
     </section>
 
     <footer>

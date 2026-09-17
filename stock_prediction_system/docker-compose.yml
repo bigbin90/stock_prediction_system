@@ -1,19 +1,19 @@
 services:
   stock-prediction:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    build: .
+    image: stock_prediction_system-stock-prediction:latest
     container_name: stock-prediction
     ports:
-      - "8765:8765"
+      - "8766:8765"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./indicators:/app/indicators
+      - ./config.py:/app/config.py
+      - ./web/app.py:/app/web/app.py
+      - ./web/templates:/app/web/templates
     environment:
       - FLASK_HOST=0.0.0.0
       - FLASK_PORT=8765
       - TZ=Asia/Shanghai
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/api/stock/analyze', data=b'{}') || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s

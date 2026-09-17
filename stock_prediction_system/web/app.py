@@ -14,6 +14,7 @@ import json
 import time
 from datetime import datetime
 from data.collector import DataCollector
+from data.financial_report import FinancialReportCollector
 from indicators.calculator import TechnicalIndicatorCalculator
 from models.predictor import StockPredictor
 from config import WEB_CONFIG, STOCK_DEFAULT
@@ -193,18 +194,26 @@ def get_kline():
         if df.empty:
             return jsonify({'success': False, 'error': '未获取到K线数据'})
         
-        # 转换格式
+        # 转换格式，NaN转为None(JSON null)
+        def safe_float(val):
+            """安全转float，NaN转为None"""
+            try:
+                v = float(val)
+                return v if not pd.isna(v) else None
+            except (ValueError, TypeError):
+                return None
+
         result = []
         for _, row in df.iterrows():
             result.append({
                 'date': row['date'].strftime('%Y-%m-%d') if hasattr(row['date'], 'strftime') else str(row['date']),
-                'open': float(row['open']),
-                'close': float(row['close']),
-                'high': float(row['high']),
-                'low': float(row['low']),
-                'volume': float(row['volume']),
-                'amount': float(row['amount']),
-                'pct_change': float(row.get('pct_change', 0)),
+                'open': safe_float(row['open']),
+                'close': safe_float(row['close']),
+                'high': safe_float(row['high']),
+                'low': safe_float(row['low']),
+                'volume': safe_float(row['volume']),
+                'amount': safe_float(row['amount']),
+                'pct_change': safe_float(row.get('pct_change', 0)),
             })
         
         return jsonify({'success': True, 'data': result})
@@ -255,17 +264,67 @@ def get_indicators():
                        'BOLL_UP', 'BOLL_MID', 'BOLL_DN', 'VOL_MA5', 'VOL_MA20']:
                 if col in row:
                     val = row[col]
-                    if hasattr(val, 'strftime'):
-                        val = val.strftime('%Y-%m-%d')
-                    elif hasattr(val, 'item'):
-                        val = val.item()
-                    elif pd.isna(val):
-                        val = None
-                    item[col] = float(val) if val is not None else None
+                    if col == 'date':
+                        # 日期列保持字符串格式
+                        if hasattr(val, 'strftime'):
+                            val = val.strftime('%Y-%m-%d')
+                        item[col] = str(val)
+                    else:
+                        if hasattr(val, 'item'):
+                            val = val.item()
+                        if pd.isna(val):
+                            item[col] = None
+                        else:
+                            try:
+                                item[col] = float(val)
+                            except (ValueError, TypeError):
+                                item[col] = None
             result.append(item)
         
         return jsonify({'success': True, 'data': result})
     
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/stock/financial_report', methods=['POST'])
+def get_financial_report():
+    """获取财务报告分析API - 数据来源巨潮资讯网"""
+    try:
+        data = request.get_json() or {}
+        stock_code = data.get('code', STOCK_DEFAULT['code'])
+        years = int(data.get('years', 3))
+
+        collector = FinancialReportCollector(stock_code, years=years)
+        report = collector.get_financial_summary()
+
+        return jsonify({
+            'success': True,
+            'data': convert_types(report),
+            'source': '巨潮资讯网(cninfo.com.cn)',
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/stock/shareholder_employee', methods=['POST'])
+def get_shareholder_employee():
+    """获取股东户数、员工数量变化API - 数据来源东方财富数据中心"""
+    try:
+        data = request.get_json() or {}
+        stock_code = data.get('code', STOCK_DEFAULT['code'])
+        years = int(data.get('years', 3))
+
+        collector = FinancialReportCollector(stock_code, years=years)
+        report = collector.get_shareholder_employee()
+
+        return jsonify({
+            'success': True,
+            'data': convert_types(report),
+            'source': '东方财富数据中心(eastmoney.com)',
+        })
     except Exception as e:
         import traceback
         traceback.print_exc()

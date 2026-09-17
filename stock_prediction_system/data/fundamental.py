@@ -9,6 +9,7 @@ class FundamentalDataCollector:
     """
     基本面数据采集器
     获取: 财务报表、估值指标、行业对比数据
+    注意：东方财富API在容器环境中不可用，已切换为新浪/同花顺数据源
     """
 
     def __init__(self, stock_code=None):
@@ -36,47 +37,62 @@ class FundamentalDataCollector:
         return df
 
     def get_income_sheet(self):
-        """获取利润表（按年度）"""
-        df = self._safe_get(ak.stock_profit_sheet_by_yearly_em, symbol=self.stock_code)
+        """
+        获取利润表（使用同花顺数据源替代东方财富）
+        """
+        df = self._safe_get(ak.stock_financial_benefit_ths, symbol=self.stock_code, indicator='利润表')
         if not df.empty:
             df.columns = [c.strip() for c in df.columns]
         return df
 
     def get_balance_sheet(self):
-        """获取资产负债表（按报告期）"""
-        df = self._safe_get(ak.stock_balance_sheet_by_report_em, symbol=self.stock_code)
+        """
+        获取资产负债表（使用财务摘要数据替代）
+        """
+        df = self._safe_get(ak.stock_financial_abstract, symbol=self.stock_code)
         if not df.empty:
             df.columns = [c.strip() for c in df.columns]
         return df
 
     def get_cash_flow(self):
-        """获取现金流量表（按季度）"""
-        df = self._safe_get(ak.stock_cash_flow_sheet_by_quarterly_em, symbol=self.stock_code)
-        if not df.empty:
-            df.columns = [c.strip() for c in df.columns]
-        return df
+        """
+        获取现金流量表
+        注意：东方财富API在容器环境中不可用，暂无可用替代数据源
+        如需现金流量表数据，可考虑使用财务摘要中的现金流指标
+        """
+        print("[FundamentalData] 现金流量表数据源暂不可用，尝试从财务摘要获取...")
+        # 尝试从财务摘要中获取现金流相关指标
+        try:
+            df = self._safe_get(ak.stock_financial_abstract, symbol=self.stock_code)
+            if not df.empty:
+                # 筛选现金流量相关指标
+                cash_flow_keywords = ['现金流', '经营活动', '投资活动', '筹资活动']
+                pattern = '|'.join(cash_flow_keywords)
+                result = df[df['指标'].str.contains(pattern, na=False)]
+                if not result.empty:
+                    return result
+            return pd.DataFrame()
+        except Exception as e:
+            print(f"[FundamentalData] 获取现金流量数据失败: {e}")
+            return pd.DataFrame()
 
     def get_valuation_data(self):
         """
         获取估值指标
         从财务指标中提取PE/PB等信息
         """
-        # 注意：AKShare 1.18版本中 stock_a_lg_indicator 已移除
-        # 使用 stock_financial_analysis_indicator 提供的财务指标替代
-        # 如需完整的PE/PB历史数据，可考虑使用乐咕乐股等第三方来源
         df = self.get_financial_indicators()
         if not df.empty:
-            # 尝试从财务指标中提取估值相关的衍生数据
             pass
-        return pd.DataFrame()  # 返回空DataFrame，估值数据在报告阶段通过其他方式获取
+        return pd.DataFrame()
 
     def get_industry_comparison(self):
         """
-        获取行业对比数据
+        获取行业对比数据（使用同花顺数据源替代东方财富）
         """
         time.sleep(self.delay)
         try:
-            df = ak.stock_board_industry_spot_em()
+            df = ak.stock_board_industry_summary_ths()
             if df is not None and not df.empty:
                 df.columns = [c.strip() for c in df.columns]
                 return df
@@ -110,10 +126,9 @@ class FundamentalDataCollector:
             result['financial_indicators'] = fin
 
         # 估值数据（通过财务指标间接获取）
-        # 如需完整PE/PB历史数据，可考虑使用乐咕乐股或东方财富数据
         fin_data = result.get('financial_indicators', pd.DataFrame())
         if not fin_data.empty:
-            result['valuation'] = fin_data  # 标记为财务衍生数据
+            result['valuation'] = fin_data
 
         # 行业对比
         ind = self.get_industry_comparison()
