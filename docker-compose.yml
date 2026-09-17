@@ -1,0 +1,19 @@
+services:
+  stock-prediction:
+    build: .
+    image: stock_prediction_system-stock-prediction:latest
+    container_name: stock-prediction
+    ports:
+      - "8766:8765"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./indicators:/app/indicators
+      - ./config.py:/app/config.py
+      - ./web/app.py:/app/web/app.py
+      - ./web/templates:/app/web/templates
+    environment:
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=8765
+      - TZ=Asia/Shanghai
+    restart: unless-stopped

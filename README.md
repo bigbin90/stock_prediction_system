@@ -2,14 +2,6 @@
 
 基于 AKShare 的多维度股票分析与多周期价格预测系统。集数据采集、技术指标计算、多周期预测与可视化展示于一体，完全基于免费数据源，无需任何付费 API。
 
-## 效果展示
-
-![本地照片][local-img1]
-![本地照片][local-img2]
-![本地照片][local-img3]
-
-
-
 ## 核心功能
 
 - **多维度数据采集**：整合技术面（OHLCV、资金流向）、基本面（财务指标、估值）、情绪面（新闻舆情情感分析）三类数据
@@ -35,6 +27,7 @@ stock_prediction_system/
 │   ├── collector.py            # DataCollector 协调器
 │   ├── technical.py            # 技术面数据采集（K线、资金流向）
 │   ├── fundamental.py          # 基本面数据采集（财务指标、行业对比）
+│   ├── financial_report.py     # 财报分析（巨潮资讯网）+ 股东/员工（东方财富数据中心）
 │   └── sentiment.py            # 情绪面数据采集（新闻舆情、情感分析）
 │
 ├── indicators/                 # 指标计算层
@@ -58,16 +51,18 @@ stock_prediction_system/
 
 | 模块 | 数据源 | 获取内容 |
 |------|--------|----------|
-| `technical.py` | `ak.stock_zh_a_hist` | 日/周/月 K 线（OHLCV + 成交量额 + 涨跌幅 + 换手率） |
-| `technical.py` | `ak.stock_individual_fund_flow` | 个股资金流向（主力/超大单/大单/中单/小单） |
+| `technical.py` | `ak.stock_zh_a_daily` | 日/周/月 K 线（OHLCV + 成交量额 + 涨跌幅 + 换手率），新浪数据源 |
+| `technical.py` | `ak.stock_individual_fund_flow` | 个股资金流向（主力/超大单/大单/中单/小单），东方财富 |
 | `fundamental.py` | `ak.stock_financial_analysis_indicator` | 86+ 财务分析指标（ROE、毛利率、净利率等） |
-| `fundamental.py` | `ak.stock_profit_sheet_by_yearly_em` | 年度利润表 |
-| `fundamental.py` | `ak.stock_balance_sheet_by_report_em` | 资产负债表 |
-| `fundamental.py` | `ak.stock_board_industry_spot_em` | 行业板块行情对比 |
+| `fundamental.py` | `ak.stock_financial_benefit_ths` | 利润表，同花顺数据源 |
+| `fundamental.py` | `ak.stock_financial_abstract` | 财务摘要数据（资产负债表、现金流指标） |
+| `fundamental.py` | `ak.stock_board_industry_summary_ths` | 行业板块行情对比，同花顺数据源 |
 | `sentiment.py` | `ak.stock_news_em` | 个股相关新闻（标题/来源/时间/链接） |
 | `sentiment.py` | SnowNLP | 中文情感分析（积极/中性/消极分类） |
+| `financial_report.py` | 巨潮资讯网 `cninfo.com.cn` | 近 3 年财报摘要（营收、净利润、毛利率），requests 直连 |
+| `financial_report.py` | 东方财富数据中心 `datacenter.eastmoney.com` | 近 3 年股东户数、员工数量变化，requests 直连 |
 
-> 注意：系统默认使用 `ak.stock_news_em` 获取个股新闻，若失败则自动降级为新浪财经滚动新闻或财新市场要闻，确保始终有舆情数据可展示。
+> 注意：由于 Docker 容器环境中东方财富 API 存在 IP 封禁问题，K 线数据已切换为新浪 `stock_zh_a_daily` 数据源，财务数据已切换为同花顺 `stock_financial_benefit_ths` / `stock_financial_abstract` 数据源。新闻舆情默认使用 `ak.stock_news_em`，若失败则自动降级为新浪财经滚动新闻或财新市场要闻。
 
 ## 技术指标
 
@@ -121,6 +116,8 @@ stock_prediction_system/
 | `/api/stock/kline` | POST | 获取 K 线数据（支持日/周/月，可指定天数） |
 | `/api/stock/fundamental` | POST | 获取基本面数据 |
 | `/api/stock/indicators` | POST | 获取技术指标数据（最近 30 条） |
+| `/api/stock/financial_report` | POST | 获取近 3 年财务报告分析（营收/净利润/毛利率，巨潮资讯网） |
+| `/api/stock/shareholder_employee` | POST | 获取近 3 年股东户数、员工数量变化（东方财富数据中心） |
 
 ### 请求示例
 
@@ -140,6 +137,8 @@ stock_prediction_system/
 
 ## 部署方式
 
+> 完整、最新的 Docker 部署步骤（含端口、目录挂载、数据源、运维命令与故障排查）请参阅 [DOCKER-DEPLOYMENT.md](./DOCKER-DEPLOYMENT.md)。
+
 ### Docker 部署（推荐）
 
 确保 Docker Desktop 已安装并运行。
@@ -154,8 +153,8 @@ docker compose up -d
 # 查看启动日志
 docker compose logs -f
 
-# 访问 Web 界面
-open http://127.0.0.1:8765
+# 访问 Web 界面（默认外部端口 8766，映射到容器内 8765）
+open http://127.0.0.1:8766
 ```
 
 #### 管理容器
@@ -174,16 +173,16 @@ docker ps --filter name=stock-prediction
 docker stats stock-prediction
 
 # 重新构建（修改代码后）
-docker compose build --no-cache stock-prediction
-docker compose up -d
+docker compose down && docker compose build && docker compose up -d
 ```
 
 #### Docker 注意事项
 
-- 默认端口为 8765，可通过修改 `docker-compose.yml` 中的 `ports` 映射更改
+- 默认端口映射为 `8766:8765`（外部 8766 → 容器内 8765），可通过修改 `docker-compose.yml` 中的 `ports` 映射更改
 - 容器设置了健康检查（间隔 30s，超时 10s，起始等待 60s）
 - `restart: unless-stopped` 确保宿主机重启后自动运行
 - 时区默认北京（Asia/Shanghai）
+- 代码热更新：`docker-compose.yml` 默认挂载了 `data/`、`models/`、`indicators/`、`config.py`、`web/app.py` 目录，修改后重启容器即可生效
 
 ### 本地直接运行
 
@@ -233,7 +232,7 @@ python main.py --cli 600519 SH --name 贵州茅台
 | `PREDICTION_PARAMS` | 各周期天数 | 5/20/60/120 | 四周期交易日数 |
 | `CONFIDENCE_WEIGHTS` | 各维度权重 | 0.30/0.25/0.15/... | 置信度评估权重 |
 | `SENTIMENT_PARAMS` | max_news_items | 50 | 最大新闻数量 |
-| `WEB_CONFIG` | host/port | 0.0.0.0:8765 | Web 服务地址（Docker 默认全绑定） |
+| `WEB_CONFIG` | host/port | 127.0.0.1:8765 | Web 服务地址（Docker 中由 `FLASK_HOST` 覆盖为 0.0.0.0） |
 
 ## 常见问题
 
@@ -255,12 +254,12 @@ AKShare 是免费的 Python 金融数据接口库，持续维护更新。如果�
 
 ### Q: Docker 构建太慢怎么办？
 
-首次构建需要下载 python:3.11 基础镜像（约 900MB）和所有 Python 依赖（约 500MB）。建议使用稳定的网络环境。后续构建会利用 Docker 缓存层，速度将大幅提升。
+首次构建需要下载 python:3.11 基础镜像（约 900MB，Dockerfile 已通过 daocloud 镜像加速器拉取）和所有 Python 依赖（约 500MB）。后续构建会利用 Docker 缓存层，速度将大幅提升。
+
+### Q: 为什么 Docker 容器中 K 线数据接口换了？
+
+由于东方财富 API 在 Docker 容器环境中存在 IP 封禁问题，系统已将 K 线数据源切换为新浪 `stock_zh_a_daily`，财务数据切换为同花顺 `stock_financial_benefit_ths`。功能完全兼容，额外计算了涨跌幅、涨跌额和振幅等衍生指标。
 
 ---
 
 > **免责声明：** 本系统所有预测均为基于历史数据的统计推断，不构成任何投资建议。股市有风险，投资需谨慎。
-
-[local-img1]: ./stock-prediction-system-docs/assets/image/1.png "本地照片"
-[local-img2]: ./stock-prediction-system-docs/assets/image/2.png "本地照片"
-[local-img3]: ./stock-prediction-system-docs/assets/image/3.png "本地照片"
